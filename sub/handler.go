@@ -47,11 +47,11 @@ func (s *SqsEventProcessor) WithLogger(logger zerolog.Logger) *SqsEventProcessor
 	return s
 }
 
-// Run starts the processor and begins reading messages from the SQS queue. For each message it will decode the base64
-// encoded protobuf message and pass it to the handler function. If the handler function returns an error the message
-// will be released back to the queue. If the handler function returns nil, then the message will be deleted from the
-// // queue. The processor will continue running until the context is cancelled. Retries for failed messages are
-// // handled by SQS and the deadletter configuration of the queue.
+// Run starts the processor and begins reading messages from the SQS queue. For each message, it passes the message
+// to the handler function. If the handler function returns an error, the message will be released back to the queue.
+// If the handler function returns nil, then the message will be deleted from the queue. The processor will continue
+// running until the context is cancelled. Retries for failed messages are handled by SQS and the deadletter
+// configuration of the queue.
 func (s *SqsEventProcessor) Run(ctx context.Context) error {
 	for {
 		select {
@@ -71,7 +71,7 @@ func (s *SqsEventProcessor) Run(ctx context.Context) error {
 			return fmt.Errorf("failed to receive message: %w", err)
 		}
 
-		// no messages, lets qait a bit before retrying for more messages.
+		// no messages, lets wait a bit before retrying for more messages.
 		if len(out.Messages) < 1 {
 			s.logger.Debug().Msgf("No messages received from SQS. Retrying now")
 			continue
