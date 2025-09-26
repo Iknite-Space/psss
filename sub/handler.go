@@ -82,6 +82,13 @@ func (s *SqsEventProcessor) Run(ctx context.Context) error {
 			if message.MessageId != nil {
 				messageID = *message.MessageId
 			}
+
+			if message.ReceiptHandle == nil {
+				s.logger.Error().Str("message_id", messageID).Msg("Message has no receipt handle, cannot delete")
+				continue
+			}
+			messageHandle := *message.ReceiptHandle
+
 			err = s.handlerFn(ctx, message)
 			if err != nil {
 				// Note: This is a debug message because "true" errors should be logged by the handling function.
@@ -90,7 +97,7 @@ func (s *SqsEventProcessor) Run(ctx context.Context) error {
 			}
 			_, err = s.svc.DeleteMessage(ctx, &sqs.DeleteMessageInput{
 				QueueUrl:      &s.queueURL,
-				ReceiptHandle: aws.String(*message.ReceiptHandle),
+				ReceiptHandle: aws.String(messageHandle),
 			})
 			if err != nil {
 				s.logger.Error().Err(err).Str("message_id", messageID).Msg("Error deleting message. Warning this " +
