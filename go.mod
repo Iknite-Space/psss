@@ -1,4 +1,4 @@
-module githuib.com/Iknite-Space/psss
+module github.com/Iknite-Space/psss
 
 go 1.24.5
 
