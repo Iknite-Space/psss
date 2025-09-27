@@ -35,7 +35,7 @@ func jsonEventHandlerToSqsHandlerFn[T any](handler JSONEventHandlerFn[T],
 ) SqsHandlerFn {
 	return func(ctx context.Context, message awstypes.Message) error {
 		if message.Body == nil {
-			return nil
+			return fmt.Errorf("message body is nil")
 		}
 
 		var msgBody T
