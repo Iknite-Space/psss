@@ -5,6 +5,14 @@ import (
 	"time"
 )
 
+type EventType uint8
+
+const (
+	EventTypeCreated EventType = 1
+	EventTypeUpdated EventType = 2
+	EventTypeDeleted EventType = 3
+)
+
 type EventMutationHandlerFn func(context.Context, MutationEvents) error
 
 // Represents a generic event occurring/generated in the system.
@@ -13,7 +21,7 @@ type MutationEvents struct {
 	EventID string `json:"event_id"`
 
 	// Type or category of the event (e.g., "notes.created", "notes.updated")
-	EventType string `json:"event_type"`
+	EventType EventType `json:"event_type"`
 
 	// Timestamp when the event occurred (in UTC)
 	Timestamp time.Time `json:"timestamp"`
@@ -39,11 +47,11 @@ type MutationEvents struct {
 	// State of the resource before the event occurred
 	Before []byte `json:"before"`
 
-	// State of the resource after the event occurred
-	After []byte `json:"after"`
-
 	// Additional metadata related to the event
 	MetaData []byte `json:"metadata"`
+
+	// State of the resource after the event occurred
+	After []byte `json:"after"`
 }
 
 func MutationEventHandlerToStringHandlder(handler EventMutationHandlerFn) StringHandler {
