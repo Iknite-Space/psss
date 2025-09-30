@@ -102,12 +102,40 @@ func MutationEventHandlerToStringHandlder[T proto.Message](handler EventMutation
 		msg := &MutationEvents{}
 		err := json.Unmarshal([]byte(s), msg)
 		if err != nil {
-			return fmt.Errorf(`error unmarshaling json mutation even. why=%w`, err)
+			return fmt.Errorf(`error unmarshaling JSON mutation event: %w`, err)
+		}
+
+		var beforeBody T
+		err = proto.Unmarshal([]byte(msg.Before), beforeBody)
+		if err != nil {
+			return fmt.Errorf(`error unmarshaling 'Before' field from protobuf: %w`, err)
+		}
+
+		var afterBody T
+		err = proto.Unmarshal([]byte(msg.After), afterBody)
+		if err != nil {
+			return fmt.Errorf(`error unmarshaling 'After' field from protobuf: %w`, err)
+		}
+
+		var metaDataBody T
+		err = proto.Unmarshal([]byte(msg.MetaData), metaDataBody)
+		if err != nil {
+			return fmt.Errorf(`error unmarshaling 'MetaData' field from protobuf: %w`, err)
 		}
 
 		input := ProtoMutationEvent[T]{
-			EventID:   msg.EventID,
-			EventType: msg.EventType,
+			EventID:       msg.EventID,
+			EventType:     msg.EventType,
+			EventTime:     msg.EventTime,
+			Source:        msg.Source,
+			CorrelationID: msg.CorrelationID,
+			ResourceType:  msg.ResourceType,
+			ResourceID:    msg.ResourceID,
+			PerformedBy:   msg.PerformedBy,
+			Reason:        msg.Reason,
+			Before:        beforeBody,
+			After:         afterBody,
+			MetaData:      metaDataBody,
 		}
 
 		return handler(ctx, input)
