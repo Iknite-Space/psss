@@ -20,17 +20,10 @@ const (
 	EventTypeDeleted EventType = 3
 )
 
-// MutationEventSqsProcessor is a processor that reads events from an SQS queue and processes them using the
-// provided handler function. It uses the AWS SDK for Go v2 to interact with SQS.
-type MutationEventSqsProcessor struct {
-	svc       *sqs.Client
-	queueURL  string
-	handlerFn StringHandler
-	logger    zerolog.Logger
-}
-
-
-func NewMutationEventSqsProcessorx[T proto.Message](
+// NewMutationEventSqsProcessor creates an SQS event processor that reads mutation events
+// from an SQS queue, unmarshals them into protocol buffer messages, and processes them
+// using a strongly-typed event handler function.
+func NewMutationEventSqsProcessor[T proto.Message](
 	svc *sqs.Client,
 	queueURL string,
 	newMessage func() T,
@@ -38,14 +31,16 @@ func NewMutationEventSqsProcessorx[T proto.Message](
 ) *SqsEventProcessor {
 
 	mutationEventHandler := MutationEventHandlerToStringHandler(handler, newMessage)
+	snsStringHandler := StringHandlerToSnsWrapperhandler(mutationEventHandler)
 
 	return &SqsEventProcessor{
 		svc:       svc,
 		queueURL:  queueURL,
 		logger:    zerolog.Nop(),
-		handlerFn: jsonEventHandlerToSqsHandlerFn(),
+		handlerFn: jsonEventHandlerToSqsHandlerFn(snsStringHandler),
 	}
 }
+
 
 type EventMutationProtoHandlerFn[T proto.Message] func(context.Context, ProtoMutationEvent[T]) error
 
