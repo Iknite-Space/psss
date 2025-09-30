@@ -30,17 +30,16 @@ func NewMutationEventSqsProcessor[T proto.Message](
 	handler EventMutationProtoHandlerFn[T],
 ) *SqsEventProcessor {
 
-	mutationEventHandler := MutationEventHandlerToStringHandler(handler, newMessage)
-	snsStringHandler := StringHandlerToSnsWrapperhandler(mutationEventHandler)
+	snsString := MutationEventHandlerToStringHandler(handler, newMessage)
+	snsWrapper := StringHandlerToSnsWrapperhandler(snsString)
 
 	return &SqsEventProcessor{
 		svc:       svc,
 		queueURL:  queueURL,
 		logger:    zerolog.Nop(),
-		handlerFn: jsonEventHandlerToSqsHandlerFn(snsStringHandler),
+		handlerFn: jsonEventHandlerToSqsHandlerFn(snsWrapper),
 	}
 }
-
 
 type EventMutationProtoHandlerFn[T proto.Message] func(context.Context, ProtoMutationEvent[T]) error
 
