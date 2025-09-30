@@ -3,6 +3,8 @@ package sub
 import (
 	"context"
 	"time"
+
+	"google.golang.org/protobuf/proto"
 )
 
 type EventType uint8
@@ -13,18 +15,18 @@ const (
 	EventTypeDeleted EventType = 3
 )
 
-type EventMutationHandlerFn func(context.Context, MutationEvents) error
+type EventMutationHandlerFn[T proto.Message] func(context.Context, MutationEvents[T]) error
 
 // Represents a generic event occurring/generated in the system.
-type MutationEvents struct {
+type MutationEvents[T proto.Message] struct {
 	// Unique identifier for the event
 	EventID string `json:"event_id"`
 
 	// Type or category of the event (e.g., "notes.created", "notes.updated")
 	EventType EventType `json:"event_type"`
 
-	// Timestamp when the event occurred (in UTC)
-	Timestamp time.Time `json:"timestamp"`
+	// EventTime when the event occurred (in UTC)
+	EventTime time.Time `json:"timestamp"`
 
 	// Source service or component that generated the event
 	Source string `json:"source"`
@@ -42,19 +44,19 @@ type MutationEvents struct {
 	PerformedBy string `json:"performed_by"`
 
 	// Explanation or justification for the event (if applicable)
-	Reason string
+	Reason string `json:"reason"`
 
 	// State of the resource before the event occurred
 	Before []byte `json:"before"`
 
 	// Additional metadata related to the event
-	MetaData []byte `json:"metadata"`
+	MetaData T `json:"metadata"`
 
 	// State of the resource after the event occurred
-	After []byte `json:"after"`
+	After T `json:"after"`
 }
 
-func MutationEventHandlerToStringHandlder(handler EventMutationHandlerFn) StringHandler {
+func MutationEventHandlerToStringHandlder[T proto.Message](handler EventMutationHandlerFn[T]) StringHandler {
 	return func(ctx context.Context, s string) error {
 		return nil
 	}
