@@ -17,8 +17,7 @@ const (
 	EventTypeDeleted EventType = 3
 )
 
-type EventMutationProtoHandlerFn[T proto.Message] func(context.Context, MutationEventsProtos[T]) error
-type EventMutationHandlerFn func(context.Context, MutationEvents) error
+type EventMutationProtoHandlerFn[T proto.Message] func(context.Context, ProtoMutationEvent[T]) error
 
 // Represents a generic event with top level fields encoding occurring/generated in the system.
 type MutationEvents struct {
@@ -52,53 +51,53 @@ type MutationEvents struct {
 	// State of the resource before the event occurred
 	Before []byte `json:"before"`
 
-	// Additional metadata related to the event
-	MetaData []byte `json:"metadata"`
-
 	// State of the resource after the event occurred
 	After []byte `json:"after"`
+
+	// Additional metadata related to the event
+	MetaData []byte `json:"metadata"`
 }
 
 // Represents a generic event with proto fields encoding occurring/generated in the system.
-type MutationEventsProtos[T proto.Message] struct {
+type ProtoMutationEvent[T proto.Message] struct {
 	// Unique identifier for the event
-	EventID string `json:"event_id"`
+	EventID string
 
 	// Type or category of the event (e.g., "notes.created", "notes.updated")
-	EventType EventType `json:"event_type"`
+	EventType EventType
 
 	// EventTime when the event occurred (in UTC)
-	EventTime time.Time `json:"timestamp"`
+	EventTime time.Time
 
 	// Source service or component that generated the event
-	Source string `json:"source"`
+	Source string
 
 	// ID used to correlate this event with other related events
-	CorrelationID string `json:"correlation_id"`
+	CorrelationID string
 
 	// Type of resource involved in the event (e.g., "document")
-	ResourceType string `json:"resource_type"`
+	ResourceType string
 
 	// Unique identifier for the affected resource
-	ResourceID string `json:"resource_id"`
+	ResourceID string
 
 	// Information about the user who performed the action
-	PerformedBy string `json:"performed_by"`
+	PerformedBy string
 
 	// Explanation or justification for the event (if applicable)
-	Reason string `json:"reason"`
+	Reason string
 
 	// State of the resource before the event occurred
-	Before []byte `json:"before"`
-
-	// Additional metadata related to the event
-	MetaData T `json:"metadata"`
+	Before T
 
 	// State of the resource after the event occurred
-	After T `json:"after"`
+	After T
+
+	// Additional metadata related to the event
+	MetaData T
 }
 
-func MutationEventHandlerToStringHandlder(handler EventMutationHandlerFn) StringHandler {
+func MutationEventHandlerToStringHandlder[T proto.Message](handler EventMutationProtoHandlerFn[T]) StringHandler {
 	return func(ctx context.Context, s string) error {
 		msg := &MutationEvents{}
 		err := json.Unmarshal([]byte(s), msg)
@@ -106,6 +105,11 @@ func MutationEventHandlerToStringHandlder(handler EventMutationHandlerFn) String
 			return fmt.Errorf(`error unmarshaling json mutation even. why=%w`, err)
 		}
 
-		return handler(ctx, *msg)
+		input := ProtoMutationEvent[T]{
+			EventID:   msg.EventID,
+			EventType: msg.EventType,
+		}
+
+		return handler(ctx, input)
 	}
 }
