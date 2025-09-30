@@ -29,15 +29,36 @@ type MutationEventSqsProcessor struct {
 	logger    zerolog.Logger
 }
 
-func NewMutationEventSqsProcessor[T proto.Message](svc *sqs.Client, queueURL string, newMessage func() T, handler EventMutationProtoHandlerFn[T]) *MutationEventSqsProcessor {
-	return &MutationEventSqsProcessor{
+// NewMutationEventSqsProcessorx creates a new instance of SqsEventProcessor,
+// which is responsible for reading events from an AWS SQS queue and processing
+// them using a provided JSON-based handler function for a specific protobuf message type.
+//
+// This helper sets up the processor to decode JSON SQS messages into the generic
+// protobuf type T, and invoke the typed handler function accordingly.
+//
+// Parameters:
+//   - svc: AWS SQS client (from AWS SDK v2).
+//   - queueURL: The URL of the SQS queue to consume messages from.
+//   - newMessage: A factory function that returns a new instance of the expected protobuf message type (T).
+//     This ensures proper unmarshaling of each JSON payload.
+//   - handler: A function that handles an event unmarshaled into type T.
+//
+// Returns:
+//   - A pointer to a configured SqsEventProcessor, ready to poll the queue and handle events.
+// 
+func NewMutationEventSqsProcessorx[T proto.Message](
+	svc *sqs.Client,
+	queueURL string,
+	newMessage func() T,
+	handler JSONEventHandlerFn[T],
+) *SqsEventProcessor {
+	return &SqsEventProcessor{
 		svc:       svc,
 		queueURL:  queueURL,
-		handlerFn: MutationEventHandlerToStringHandler(handler, newMessage),
 		logger:    zerolog.Nop(),
+		handlerFn: jsonEventHandlerToSqsHandlerFn(handler),
 	}
 }
-
 
 type EventMutationProtoHandlerFn[T proto.Message] func(context.Context, ProtoMutationEvent[T]) error
 
@@ -118,8 +139,6 @@ type ProtoMutationEvent[T proto.Message] struct {
 	// Additional metadata related to the event
 	MetaData T
 }
-
-
 
 func MutationEventHandlerToStringHandler[T proto.Message](handler EventMutationProtoHandlerFn[T], newMessage func() T) StringHandler {
 	return func(ctx context.Context, s string) error {
