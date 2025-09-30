@@ -10,7 +10,7 @@ type SnsWrapper struct {
 
 type StringHandler func(context.Context, string) error
 
-func StringHandlerToSnsWrapperhandler(handler StringHandler) func(context.Context, SnsWrapper) error {
+func StringHandlerToSnsWrapperHandler(handler StringHandler) func(context.Context, SnsWrapper) error {
 	return func(ctx context.Context, sw SnsWrapper) error {
 		return handler(ctx, sw.Message)
 	}

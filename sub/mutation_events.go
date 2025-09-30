@@ -21,7 +21,7 @@ const (
 )
 
 // NewMutationEventSqsProcessor creates an SQS event processor that reads mutation events
-// from an SQS queue, unmarshals them into protocol buffer messages, and processes them
+// from an SQS queue, Unmarshal them into protocol buffer messages, and processes them
 // using a strongly-typed event handler function.
 func NewMutationEventSqsProcessor[T proto.Message](
 	svc *sqs.Client,
@@ -31,7 +31,7 @@ func NewMutationEventSqsProcessor[T proto.Message](
 ) *SqsEventProcessor {
 
 	snsString := MutationEventHandlerToStringHandler(handler, newMessage)
-	snsWrapper := StringHandlerToSnsWrapperhandler(snsString)
+	snsWrapper := StringHandlerToSnsWrapperHandler(snsString)
 
 	return &SqsEventProcessor{
 		svc:       svc,
