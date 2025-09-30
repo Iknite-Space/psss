@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -96,31 +97,30 @@ type ProtoMutationEvent[T proto.Message] struct {
 	// Additional metadata related to the event
 	MetaData T
 }
-
-func MutationEventHandlerToStringHandlder[T proto.Message](handler EventMutationProtoHandlerFn[T]) StringHandler {
+ func MutationEventHandlerToStringHandler[T proto.Message](handler EventMutationProtoHandlerFn[T], newMessage func() T) StringHandler {
 	return func(ctx context.Context, s string) error {
 		msg := &MutationEvents{}
 		err := json.Unmarshal([]byte(s), msg)
 		if err != nil {
-			return fmt.Errorf(`error unmarshaling JSON mutation event: %w`, err)
+			return fmt.Errorf("error unmarshaling JSON mutation event: %w", err)
 		}
 
-		var beforeBody T
-		err = proto.Unmarshal([]byte(msg.Before), beforeBody)
+		before := newMessage()
+		err = protojson.Unmarshal([]byte(msg.Before), before)
 		if err != nil {
-			return fmt.Errorf(`error unmarshaling 'Before' field from protobuf: %w`, err)
+			return fmt.Errorf("error unmarshaling 'Before' field from protobuf: %w", err)
 		}
 
-		var afterBody T
-		err = proto.Unmarshal([]byte(msg.After), afterBody)
+		after := newMessage()
+		err = protojson.Unmarshal([]byte(msg.After), after)
 		if err != nil {
-			return fmt.Errorf(`error unmarshaling 'After' field from protobuf: %w`, err)
+			return fmt.Errorf("error unmarshaling 'After' field from protobuf: %w", err)
 		}
 
-		var metaDataBody T
-		err = proto.Unmarshal([]byte(msg.MetaData), metaDataBody)
+		meta := newMessage()
+		err = protojson.Unmarshal([]byte(msg.MetaData), meta)
 		if err != nil {
-			return fmt.Errorf(`error unmarshaling 'MetaData' field from protobuf: %w`, err)
+			return fmt.Errorf("error unmarshaling 'MetaData' field from protobuf: %w", err)
 		}
 
 		input := ProtoMutationEvent[T]{
@@ -133,9 +133,9 @@ func MutationEventHandlerToStringHandlder[T proto.Message](handler EventMutation
 			ResourceID:    msg.ResourceID,
 			PerformedBy:   msg.PerformedBy,
 			Reason:        msg.Reason,
-			Before:        beforeBody,
-			After:         afterBody,
-			MetaData:      metaDataBody,
+			Before:        before,
+			After:         after,
+			MetaData:      meta,
 		}
 
 		return handler(ctx, input)
