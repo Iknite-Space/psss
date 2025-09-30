@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/rs/zerolog"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -18,10 +20,29 @@ const (
 	EventTypeDeleted EventType = 3
 )
 
+// MutationEventSqsProcessor is a processor that reads events from an SQS queue and processes them using the
+// provided handler function. It uses the AWS SDK for Go v2 to interact with SQS.
+type MutationEventSqsProcessor struct {
+	svc       *sqs.Client
+	queueURL  string
+	handlerFn StringHandler
+	logger    zerolog.Logger
+}
+
+func NewMutationEventSqsProcessor[T proto.Message](svc *sqs.Client, queueURL string, newMessage func() T, handler EventMutationProtoHandlerFn[T]) *MutationEventSqsProcessor {
+	return &MutationEventSqsProcessor{
+		svc:       svc,
+		queueURL:  queueURL,
+		handlerFn: MutationEventHandlerToStringHandler(handler, newMessage),
+		logger:    zerolog.Nop(),
+	}
+}
+
+
 type EventMutationProtoHandlerFn[T proto.Message] func(context.Context, ProtoMutationEvent[T]) error
 
 // Represents a generic event with top level fields encoding occurring/generated in the system.
-type MutationEvents struct {
+type MutationEvent struct {
 	// Unique identifier for the event
 	EventID string `json:"event_id"`
 
@@ -97,9 +118,12 @@ type ProtoMutationEvent[T proto.Message] struct {
 	// Additional metadata related to the event
 	MetaData T
 }
- func MutationEventHandlerToStringHandler[T proto.Message](handler EventMutationProtoHandlerFn[T], newMessage func() T) StringHandler {
+
+
+
+func MutationEventHandlerToStringHandler[T proto.Message](handler EventMutationProtoHandlerFn[T], newMessage func() T) StringHandler {
 	return func(ctx context.Context, s string) error {
-		msg := &MutationEvents{}
+		msg := &MutationEvent{}
 		err := json.Unmarshal([]byte(s), msg)
 		if err != nil {
 			return fmt.Errorf("error unmarshaling JSON mutation event: %w", err)
