@@ -27,7 +27,7 @@ func NewMutationEventSqsProcessor[T proto.Message](
 	svc *sqs.Client,
 	queueURL string,
 	newMessage func() T,
-	handler EventMutationProtoHandlerFn[T],
+	handler ProtoMutationEventHandlerFn[T],
 ) *SqsEventProcessor {
 
 	snsString := MutationEventHandlerToStringHandler(handler, newMessage)
@@ -41,10 +41,10 @@ func NewMutationEventSqsProcessor[T proto.Message](
 	}
 }
 
-type EventMutationProtoHandlerFn[T proto.Message] func(context.Context, ProtoMutationEvent[T]) error
+type ProtoMutationEventHandlerFn[T proto.Message] func(context.Context, ProtoMutationEvent[T]) error
 
 // Represents a generic event with top level fields encoding occurring/generated in the system.
-type MutationEvent struct {
+type mutationEvent struct {
 	// Unique identifier for the event
 	EventID string `json:"event_id"`
 
@@ -121,9 +121,9 @@ type ProtoMutationEvent[T proto.Message] struct {
 	MetaData T
 }
 
-func MutationEventHandlerToStringHandler[T proto.Message](handler EventMutationProtoHandlerFn[T], newMessage func() T) StringHandler {
+func MutationEventHandlerToStringHandler[T proto.Message](handler ProtoMutationEventHandlerFn[T], newMessage func() T) StringHandler {
 	return func(ctx context.Context, s string) error {
-		msg := &MutationEvent{}
+		msg := &mutationEvent{}
 		err := json.Unmarshal([]byte(s), msg)
 		if err != nil {
 			return fmt.Errorf("error unmarshaling JSON mutation event: %w", err)
