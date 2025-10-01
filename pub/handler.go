@@ -13,23 +13,23 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 )
 
-type PubSnsImpl struct {
+type SNSPublisher struct {
 	SnsClient *sns.Client
 	logger    zerolog.Logger
 }
 
-func NewPubService(SnsClient *sns.Client) *PubSnsImpl {
-	return &PubSnsImpl{logger: zerolog.Nop(), SnsClient: SnsClient}
+func NewPubService(SnsClient *sns.Client) *SNSPublisher {
+	return &SNSPublisher{logger: zerolog.Nop(), SnsClient: SnsClient}
 }
 
 // WithLogger sets the logger for the SqsEventProcessor.
-func (s *PubSnsImpl) WithLogger(logger zerolog.Logger) *PubSnsImpl {
+func (s *SNSPublisher) WithLogger(logger zerolog.Logger) *SNSPublisher {
 	s.logger = logger
 	return s
 }
 
-// PublishMessageToSnsTopic publishes messages to a specified SNS topic ARN.
-func (s *PubSnsImpl) PublishMessageToSnsTopic(ctx context.Context, topicArn string, message models.ProtoMutationEvent[proto.Message]) error {
+// Publish publishes messages to a specified SNS topic ARN.
+func (s *SNSPublisher) Publish(ctx context.Context, topicArn string, message models.ProtoMutationEvent[proto.Message]) error {
 
 	payload := models.ProtoMutationEvent[proto.Message]{
 		EventID:       message.EventID,
