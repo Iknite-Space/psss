@@ -31,8 +31,7 @@ func NewJSONSqsEventProcessor[T any](svc *sqs.Client,
 
 // jsonEventHandlerToSqsHandlerFn converts a JSONEventHandlerFn to an SqsHandlerFn
 // by unmarshaling the SQS message body into the appropriate type.
-func jsonEventHandlerToSqsHandlerFn[T any](handler JSONEventHandlerFn[T],
-) SqsHandlerFn {
+func jsonEventHandlerToSqsHandlerFn[T any](handler JSONEventHandlerFn[T]) SqsHandlerFn {
 	return func(ctx context.Context, message awstypes.Message) error {
 		if message.Body == nil {
 			return fmt.Errorf("message body is nil")

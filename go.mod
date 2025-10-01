@@ -6,6 +6,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.39.1
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.42.7
 	github.com/rs/zerolog v1.34.0
+	google.golang.org/protobuf v1.36.9
 )
 
 require (
