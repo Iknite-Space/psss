@@ -22,7 +22,7 @@ func NewPubService(SnsClient *sns.Client) *SNSPublisher {
 	return &SNSPublisher{logger: zerolog.Nop(), SnsClient: SnsClient}
 }
 
-// WithLogger sets the logger for the SqsEventProcessor.
+// WithLogger sets the logger for the SNSPublisher.
 func (s *SNSPublisher) WithLogger(logger zerolog.Logger) *SNSPublisher {
 	s.logger = logger
 	return s
