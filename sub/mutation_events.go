@@ -61,7 +61,7 @@ func MutationEventHandlerToStringHandler[T proto.Message](handler ProtoMutationE
 			return fmt.Errorf("error unmarshaling 'MetaData' field from protobuf: %w", err)
 		}
 
-		input := models.ProtoMutationEvent[T]{
+		input :=  ProtoMutationEvent[T]{
 			EventID:       msg.EventID,
 			EventType:     msg.EventType,
 			EventTime:     msg.EventTime,
