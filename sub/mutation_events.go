@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/Iknite-Space/psss/models"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -12,6 +11,8 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
+
+type ProtoMutationEventHandlerFn[T proto.Message] func(context.Context, models.ProtoMutationEvent[T]) error
 
 // NewMutationEventSqsProcessor creates an SQS event processor that reads mutation events
 // from an SQS queue, Unmarshal them into protocol buffer messages, and processes them
@@ -34,11 +35,10 @@ func NewMutationEventSqsProcessor[T proto.Message](
 	}
 }
 
-type ProtoMutationEventHandlerFn[T proto.Message] func(context.Context, models.ProtoMutationEvent[T]) error
 
 func MutationEventHandlerToStringHandler[T proto.Message](handler ProtoMutationEventHandlerFn[T], newMessage func() T) StringHandler {
 	return func(ctx context.Context, s string) error {
-		msg := &mutationEvent{}
+		msg := &models.PublishedProtoMutationEvent{}
 		err := json.Unmarshal([]byte(s), msg)
 		if err != nil {
 			return fmt.Errorf("error unmarshaling JSON mutation event: %w", err)
@@ -56,12 +56,6 @@ func MutationEventHandlerToStringHandler[T proto.Message](handler ProtoMutationE
 			return fmt.Errorf("error unmarshaling 'After' field from protobuf: %w", err)
 		}
 
-		meta := newMessage()
-		err = protojson.Unmarshal([]byte(msg.MetaData), meta)
-		if err != nil {
-			return fmt.Errorf("error unmarshaling 'MetaData' field from protobuf: %w", err)
-		}
-
 		input := models.ProtoMutationEvent[T]{
 			EventID:       msg.EventID,
 			EventType:     msg.EventType,
@@ -74,49 +68,9 @@ func MutationEventHandlerToStringHandler[T proto.Message](handler ProtoMutationE
 			Reason:        msg.Reason,
 			Before:        before,
 			After:         after,
-			MetaData:      meta,
+			MetaData:      msg.MetaData,
 		}
 
 		return handler(ctx, input)
 	}
-}
-
-
-// Represents a generic event with top level fields encoding occurring/generated in the system.
-type mutationEvent struct {
-	// Unique identifier for the event
-	EventID string `json:"event_id"`
-
-	// Type or category of the event (e.g., "notes.created", "notes.updated")
-	EventType models.EventType `json:"event_type"`
-
-	// EventTime when the event occurred (in UTC)
-	EventTime time.Time `json:"timestamp"`
-
-	// Source service or component that generated the event
-	Source string `json:"source"`
-
-	// ID used to correlate this event with other related events
-	CorrelationID string `json:"correlation_id"`
-
-	// Type of resource involved in the event (e.g., "document")
-	ResourceType string `json:"resource_type"`
-
-	// Unique identifier for the affected resource
-	ResourceID string `json:"resource_id"`
-
-	// 'user_id' of the user who performed the action
-	UserID string `json:"performed_by"`
-
-	// Explanation or justification for the event (if applicable)
-	Reason string `json:"reason"`
-
-	// State of the resource before the event occurred
-	Before []byte `json:"before"`
-
-	// State of the resource after the event occurred
-	After []byte `json:"after"`
-
-	// Additional metadata related to the event
-	MetaData []byte `json:"metadata"`
 }

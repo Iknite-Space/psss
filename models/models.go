@@ -50,5 +50,44 @@ type ProtoMutationEvent[T proto.Message] struct {
 	After T
 
 	// Additional metadata related to the event
-	MetaData T
+	MetaData map[string]any
+}
+
+// Represents a generic event with top level fields encoding occurring/generated in the system.
+type PublishedProtoMutationEvent struct {
+	// Unique identifier for the event
+	EventID string `json:"event_id"`
+
+	// Type or category of the event (e.g., "notes.created", "notes.updated")
+	EventType EventType `json:"event_type"`
+
+	// EventTime when the event occurred (in UTC)
+	EventTime time.Time `json:"timestamp"`
+
+	// Source service or component that generated the event
+	Source string `json:"source"`
+
+	// ID used to correlate this event with other related events
+	CorrelationID string `json:"correlation_id"`
+
+	// Type of resource involved in the event (e.g., "document")
+	ResourceType string `json:"resource_type"`
+
+	// Unique identifier for the affected resource
+	ResourceID string `json:"resource_id"`
+
+	// 'user_id' of the user who performed the action
+	UserID string `json:"performed_by"`
+
+	// Explanation or justification for the event (if applicable)
+	Reason string `json:"reason"`
+
+	// State of the resource before the event occurred
+	Before []byte `json:"before,omitempty"`
+
+	// State of the resource after the event occurred
+	After []byte `json:"after,omitempty"`
+
+	// Additional metadata related to the event
+	MetaData map[string]any `json:"metadata,omitempty"`
 }

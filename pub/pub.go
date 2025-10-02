@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/Iknite-Space/psss/models"
 	"github.com/rs/zerolog"
@@ -47,13 +46,8 @@ func marshalProtoMutationEventToJSON[T proto.Message](e models.ProtoMutationEven
 		return nil, fmt.Errorf("marshaling 'After': %w", err)
 	}
 
-	metaBytes, err := protojson.Marshal(e.MetaData)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling 'MetaData': %w", err)
-	}
-
 	// actual struct for JSON encoding for top level fields using json package.
-	payload := publishedProtoMutationEvent{
+	payload := models.PublishedProtoMutationEvent{
 		EventID:       e.EventID,
 		EventType:     e.EventType,
 		EventTime:     e.EventTime,
@@ -65,7 +59,7 @@ func marshalProtoMutationEventToJSON[T proto.Message](e models.ProtoMutationEven
 		Reason:        e.Reason,
 		Before:        beforeBytes,
 		After:         afterBytes,
-		MetaData:      metaBytes,
+		MetaData:      e.MetaData,
 	}
 
 	return json.Marshal(payload)
@@ -91,25 +85,8 @@ func (s *SNSPublisher[T]) Publish(ctx context.Context, message models.ProtoMutat
 	}
 
 	s.logger.Info().
-		Str("message_id", *response.MessageId).
-		Str("correlation_id", message.CorrelationID).
+		Str("message_id", *response.MessageId).Str("correlation_id", message.CorrelationID).
 		Msg("Message published to SNS successfully")
 
 	return nil
-}
-
-// publishedProtoMutationEvent is used for JSON encoding of the  proto.message fields using protojson.marshal fxn.
-type publishedProtoMutationEvent struct {
-	EventID       string           `json:"event_id"`
-	EventType     models.EventType `json:"event_type"`
-	EventTime     time.Time        `json:"timestamp"`
-	Source        string           `json:"source"`
-	CorrelationID string           `json:"correlation_id"`
-	ResourceType  string           `json:"resource_type"`
-	ResourceID    string           `json:"resource_id"`
-	UserID        string           `json:"user_id"`
-	Reason        string           `json:"reason"`
-	Before        json.RawMessage  `json:"before,omitempty"`
-	After         json.RawMessage  `json:"after,omitempty"`
-	MetaData      json.RawMessage  `json:"metadata,omitempty"`
 }
