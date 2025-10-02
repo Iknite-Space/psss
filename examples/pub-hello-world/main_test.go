@@ -21,7 +21,7 @@ func TestPublish(t *testing.T) {
 		ResourceID:   "resource-1",
 		UserID:       "user-1",
 	}
-	
+
 	err := newMockPubSvc.MockPublish(context.Background(), eventMsg)
 	require.NoError(t, err)
 }
