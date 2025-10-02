@@ -34,12 +34,6 @@ func (s *SNSPublisher[T]) WithLogger(logger zerolog.Logger) *SNSPublisher[T] {
 	return s
 }
 
-// WithNewSnsTopicArn sets a new SNS topic ARN for publishing events.
-func (s *SNSPublisher[T]) WithNewSnsTopicArn(topicArn string) *SNSPublisher[T] {
-	s.topicArn = topicArn
-	return s
-}
-
 // marshalProtoMutationEventToJSON marshals a ProtoMutationEvent with proto.Message fields to JSON.
 func marshalProtoMutationEventToJSON[T proto.Message](e models.ProtoMutationEvent[T]) ([]byte, error) {
 	beforeBytes, err := protojson.Marshal(e.Before)
