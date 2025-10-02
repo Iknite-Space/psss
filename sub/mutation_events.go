@@ -34,7 +34,7 @@ func NewMutationEventSqsProcessor[T proto.Message](
 }
 
 type ProtoMutationEventHandlerFn[T proto.Message] func(context.Context, ProtoMutationEvent[T]) error
- 
+
 func MutationEventHandlerToStringHandler[T proto.Message](handler ProtoMutationEventHandlerFn[T], newMessage func() T) StringHandler {
 	return func(ctx context.Context, s string) error {
 		msg := &mutationEvent{}
@@ -61,7 +61,7 @@ func MutationEventHandlerToStringHandler[T proto.Message](handler ProtoMutationE
 			return fmt.Errorf("error unmarshaling 'MetaData' field from protobuf: %w", err)
 		}
 
-		input :=  ProtoMutationEvent[T]{
+		input := ProtoMutationEvent[T]{
 			EventID:       msg.EventID,
 			EventType:     msg.EventType,
 			EventTime:     msg.EventTime,
@@ -69,7 +69,7 @@ func MutationEventHandlerToStringHandler[T proto.Message](handler ProtoMutationE
 			CorrelationID: msg.CorrelationID,
 			ResourceType:  msg.ResourceType,
 			ResourceID:    msg.ResourceID,
-			PerformedBy:   msg.PerformedBy,
+			UserID:        msg.UserID,
 			Reason:        msg.Reason,
 			Before:        before,
 			After:         after,
@@ -79,8 +79,6 @@ func MutationEventHandlerToStringHandler[T proto.Message](handler ProtoMutationE
 		return handler(ctx, input)
 	}
 }
-
-
 
 type EventType uint8
 
@@ -113,8 +111,8 @@ type mutationEvent struct {
 	// Unique identifier for the affected resource
 	ResourceID string `json:"resource_id"`
 
-	// Information about the user who performed the action
-	PerformedBy string `json:"performed_by"`
+	// 'user_id' of the user who performed the action
+	UserID string `json:"performed_by"`
 
 	// Explanation or justification for the event (if applicable)
 	Reason string `json:"reason"`
@@ -152,8 +150,8 @@ type ProtoMutationEvent[T proto.Message] struct {
 	// Unique identifier for the affected resource
 	ResourceID string
 
-	// Information about the user who performed the action
-	PerformedBy string
+	// 'user_id' of the user who performed the action
+	UserID string
 
 	// Explanation or justification for the event (if applicable)
 	Reason string
