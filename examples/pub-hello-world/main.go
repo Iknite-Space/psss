@@ -7,7 +7,6 @@
 // Example usage:
 //
 //	go run main.go <sns-topic-arn>
-//
 package main
 
 import (
@@ -41,14 +40,17 @@ func run() error {
 	snsClient := sns.NewFromConfig(awscfg)
 	publisher := pub.NewPubService(snsClient, topicArn)
 
+	// Publishing a "created" event
 	event := models.ProtoMutationEvent[proto.Message]{
-		EventID:      "392f8b1e-4f1c-4d2a-9c3e-1a2b3c4d5e6f",
-		EventType:    models.EventTypeCreated,
-		EventTime:    time.Now(),
-		Source:       "pub-hello-world",
-		ResourceType: "example-resource",
-		ResourceID:   "resource-1",
-		UserID:       "432f8b1e-4f1c-4d2a-9c3e-1a2b3c4d5e6f",
+		EventID:       "392f8b1e-4f1c-4d2a-9c3e-1a2b3c4d5e6f",
+		EventType:     models.EventTypeCreated,
+		EventTime:     time.Now(),
+		Source:        "pub-hello-world",
+		ResourceType:  "example-resource",
+		ResourceID:    "resource-1",
+		UserID:        "432f8b1e-4f1c-4d2a-9c3e-1a2b3c4d5e6f",
+		CorrelationID: "432f8b1e-4f1c-4d2a-9c3e-1a2b3c4d5e6f",
+		Reason:        "testing pub-hello-world example",
 	}
 
 	err = publisher.Publish(ctx, event)
@@ -57,7 +59,7 @@ func run() error {
 	}
 
 	fmt.Println("Message published successfully")
-	
+
 	return nil
 }
 
