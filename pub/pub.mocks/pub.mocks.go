@@ -1,4 +1,4 @@
-package pubmocks
+package pub
 
 import (
 	"context"
