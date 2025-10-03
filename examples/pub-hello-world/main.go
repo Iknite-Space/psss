@@ -39,7 +39,7 @@ func run() error {
 
 	snsClient := sns.NewFromConfig(awscfg)
 	publisher := pub.NewPubService(snsClient, topicArn)
-
+pub.
 	// Publishing a "created" event
 	event := models.ProtoMutationEvent[proto.Message]{
 		EventID:       "392f8b1e-4f1c-4d2a-9c3e-1a2b3c4d5e6f",
