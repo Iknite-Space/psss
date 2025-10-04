@@ -38,6 +38,7 @@ func run() error {
 	}
 
 	snsClient := sns.NewFromConfig(awscfg)
+	
 	publisher := pub.NewPubService(snsClient, topicArn)
 
 	// Publishing a "created" event
