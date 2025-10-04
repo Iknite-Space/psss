@@ -21,7 +21,6 @@ func MockNewPublisherService(SnsClient *sns.Client, topicArn string) *SNSPublish
 
 // MockPublish mocks the implementation of the sending messages to a message broker.
 func (s *SNSPublisher[T]) MockPublish(ctx context.Context, message models.ProtoMutationEvent[proto.Message]) error {
-	 
 	return nil
 }
  
