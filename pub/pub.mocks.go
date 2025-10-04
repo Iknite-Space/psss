@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 )
 
-
+// MockNewPublisherService is a mock wrapper for the sns
 func MockNewPublisherService(SnsClient *sns.Client, topicArn string) *SNSPublisher[proto.Message] {
 	return &SNSPublisher[proto.Message]{
 		SnsClient: SnsClient,
