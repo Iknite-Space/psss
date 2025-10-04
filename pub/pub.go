@@ -27,8 +27,8 @@ type SNSPublisher[T proto.Message] struct {
 
 var _ Publisher[proto.Message] = (*SNSPublisher[proto.Message])(nil)
 
-func NewPubService(SnsClient *sns.Client, topicArn string) *SNSPublisher[proto.Message] {
-	return &SNSPublisher[proto.Message]{
+func NewPubService[T proto.Message](SnsClient *sns.Client, topicArn string) *SNSPublisher[T] {
+	return &SNSPublisher[T]{
 		SnsClient: SnsClient,
 		logger:    zerolog.Nop(),
 		topicArn:  topicArn,
