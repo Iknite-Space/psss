@@ -4,31 +4,24 @@ import (
 	"context"
 
 	"github.com/Iknite-Space/psss/models"
+	"github.com/rs/zerolog"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/aws/aws-sdk-go-v2/service/sns"
 )
 
-// MockPublisher is a manual mock implementation of Publisher[T]
-type MockPublisher[T proto.Message] struct {
-	mockPublishFunc func(ctx context.Context, message models.ProtoMutationEvent[T]) error
-}
 
-// Publisher defines the interface for publishing messages
-type Publisher[T proto.Message] interface {
-	MockPublish(ctx context.Context, message models.ProtoMutationEvent[T]) error
-}
-
-// NewMockPublisher creates a new instance of MockPublisher[T]
-func NewMockPublisher[T proto.Message]() *MockPublisher[T] {
-	return &MockPublisher[T]{}
-}
-
-var _ Publisher[proto.Message] = (*MockPublisher[proto.Message])(nil)
-
-// MockPublish sets the mock implementation for the Publish method
-func (m *MockPublisher[T]) MockPublish(ctx context.Context, message models.ProtoMutationEvent[T]) error {
-	if m.mockPublishFunc != nil {
-		return m.mockPublishFunc(ctx, message)
+func MockNewPublisherService(SnsClient *sns.Client, topicArn string) *SNSPublisher[proto.Message] {
+	return &SNSPublisher[proto.Message]{
+		SnsClient: SnsClient,
+		logger:    zerolog.Nop(),
+		topicArn:  topicArn,
 	}
+}
 
+// MockPublish mocks the implementation of the sending messages to a message broker.
+func (s *SNSPublisher[T]) MockPublish(ctx context.Context, message models.ProtoMutationEvent[proto.Message]) error {
+	 
 	return nil
 }
+ 
