@@ -14,11 +14,18 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 )
 
+// Publisher defines the interface for publishing messages
+type Publisher[T proto.Message] interface {
+	Publish(ctx context.Context, message models.ProtoMutationEvent[T]) error
+}
+
 type SNSPublisher[T proto.Message] struct {
 	SnsClient *sns.Client
 	topicArn  string
 	logger    zerolog.Logger
 }
+
+var _ Publisher[proto.Message] = (*SNSPublisher[proto.Message])(nil)
 
 func NewPubService(SnsClient *sns.Client, topicArn string) *SNSPublisher[proto.Message] {
 	return &SNSPublisher[proto.Message]{
