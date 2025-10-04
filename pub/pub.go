@@ -73,7 +73,8 @@ func (s *SNSPublisher[T]) Publish(ctx context.Context, message models.ProtoMutat
 	}
 
 	s.logger.Debug().
-		RawJSON("sns_message", eventBytes).Str("correlation_id", message.CorrelationID).Msg("Publishing event to SNS")
+		RawJSON("sns_message", eventBytes).
+		Str("correlation_id", message.CorrelationID).Msg("Publishing event to SNS")
 
 	// Publish to SNS
 	response, err := s.SnsClient.Publish(ctx, &sns.PublishInput{
