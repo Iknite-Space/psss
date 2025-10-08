@@ -73,7 +73,7 @@ func marshalProtoMutationEventToJSON[T proto.Message](e models.ProtoMutationEven
 }
 
 // Publish publishes messages to a specified message broker.
-func (s *SNSPublisher[T]) Publish(ctx context.Context, message models.ProtoMutationEvent[proto.Message]) error {
+func (s *SNSPublisher[T]) Publish(ctx context.Context, message models.ProtoMutationEvent[T]) error {
 	eventBytes, err := marshalProtoMutationEventToJSON(message)
 	if err != nil {
 		return fmt.Errorf("failed to marshal mutation event: %w", err)
