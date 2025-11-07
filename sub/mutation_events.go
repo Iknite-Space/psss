@@ -15,17 +15,22 @@ import (
 type ProtoMutationEventHandlerFn[T proto.Message] func(context.Context, models.ProtoMutationEvent[T]) error
 
 // NewMutationEventSqsProcessor creates an SQS event processor that reads mutation events
-// from an SQS queue, Unmarshal them into protocol buffer messages, and processes them
-// using a strongly-typed event handler function.
+// from an SQS queue, unmarshal them into strongly typed protobuf messages, and processes them
+// using the provided event handler. If includeSnsWrapper is true, messages are unwrapped from
+// SNS-compatible envelopes before processing.
 func NewMutationEventSqsProcessor[T proto.Message](
 	svc *sqs.Client,
 	queueURL string,
 	newMessage func() T,
 	handler ProtoMutationEventHandlerFn[T],
+	includeSnsWrapper bool,
 ) *SqsEventProcessor {
+	var snsWrapper func(context.Context, SnsWrapper) error
 
 	snsString := MutationEventHandlerToStringHandler(handler, newMessage)
-	snsWrapper := StringHandlerToSnsWrapperHandler(snsString)
+	if includeSnsWrapper {
+		snsWrapper = SnsWrapperToSqsWrapperHandler(snsString)
+	}
 
 	return &SqsEventProcessor{
 		svc:       svc,
@@ -35,25 +40,29 @@ func NewMutationEventSqsProcessor[T proto.Message](
 	}
 }
 
-
-func MutationEventHandlerToStringHandler[T proto.Message](handler ProtoMutationEventHandlerFn[T], newMessage func() T) StringHandler {
+// MutationEventHandlerToStringHandler converts a strongly typed ProtoMutationEventHandlerFn
+// into an SNS-compatible handler that processes the message field of an SNS JSON payload.
+// It deserializes the incoming mutation SNS event message into a PublishedProtoMutationEvent,
+// unmarshal the "Before" and "After" protobuf messages, and invokes the provided handler.
+// Returns an error if JSON or protobuf unmarshaling fails.
+func MutationEventHandlerToStringHandler[T proto.Message](handler ProtoMutationEventHandlerFn[T], newMessage func() T) SnsWrapperHandler {
 	return func(ctx context.Context, s string) error {
 		msg := &models.PublishedProtoMutationEvent{}
 		err := json.Unmarshal([]byte(s), msg)
 		if err != nil {
-			return fmt.Errorf("error unmarshaling JSON mutation event: %w", err)
+			return fmt.Errorf("error unmarshaling sns mutation event. why=%w", err)
 		}
 
 		before := newMessage()
 		err = protojson.Unmarshal([]byte(msg.Before), before)
 		if err != nil {
-			return fmt.Errorf("error unmarshaling 'Before' field from protobuf: %w", err)
+			return fmt.Errorf("error unmarshaling 'Before' field from sns mutation event. why=%w", err)
 		}
 
 		after := newMessage()
 		err = protojson.Unmarshal([]byte(msg.After), after)
 		if err != nil {
-			return fmt.Errorf("error unmarshaling 'After' field from protobuf: %w", err)
+			return fmt.Errorf("error unmarshaling 'After' field from sns mutation event. why=%w", err)
 		}
 
 		input := models.ProtoMutationEvent[T]{
