@@ -16,27 +16,31 @@ type ProtoMutationEventHandlerFn[T proto.Message] func(context.Context, models.P
 
 // NewMutationEventSqsProcessor creates an SQS event processor that reads mutation events
 // from an SQS queue, unmarshal them into strongly typed protobuf messages, and processes them
-// using the provided event handler. If includeSnsWrapper is true, messages are unwrapped from
-// SNS-compatible envelopes before processing.
-func NewMutationEventSqsProcessor[T proto.Message](
-	svc *sqs.Client,
-	queueURL string,
-	newMessage func() T,
-	handler ProtoMutationEventHandlerFn[T],
-	includeSnsWrapper bool,
-) *SqsEventProcessor {
-	var snsWrapper func(context.Context, SnsWrapper) error
+// using the provided event handler. 
+// Note :- if includeSnsWrapper is true, the processor expects SQS messages to be wrapped in SNS JSON format.
+// Otherwise, it expects direct SQS messages containing the SNS "Message" JSON.
+func NewMutationEventSqsProcessor[T proto.Message](svc *sqs.Client, queueURL string, newMessage func() T, handler ProtoMutationEventHandlerFn[T], includeSnsWrapper bool) *SqsEventProcessor {
+	snsStringHandler := MutationEventHandlerToStringHandler(handler, newMessage)
 
-	snsString := MutationEventHandlerToStringHandler(handler, newMessage)
+	var sqsHandler SqsHandlerFn
 	if includeSnsWrapper {
-		snsWrapper = SnsWrapperToSqsWrapperHandler(snsString)
+		// handling wrapped sns messages in sns format, see example in 'SnsWrapper' struct.
+		snsWrapperHandler := SnsWrapperToSqsWrapperHandler(snsStringHandler)
+		sqsHandler = jsonEventHandlerToSqsHandlerFn(snsWrapperHandler)
+	} else {
+		// handling direct SQS messages containing the SNS "Message" Json field.
+		sqsHandler = jsonEventHandlerToSqsHandlerFn(
+			func(ctx context.Context, msg string) error {
+				return snsStringHandler(ctx, msg)
+			},
+		)
 	}
 
 	return &SqsEventProcessor{
 		svc:       svc,
 		queueURL:  queueURL,
 		logger:    zerolog.Nop(),
-		handlerFn: jsonEventHandlerToSqsHandlerFn(snsWrapper),
+		handlerFn: sqsHandler,
 	}
 }
 
