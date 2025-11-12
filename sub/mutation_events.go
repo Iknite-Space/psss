@@ -16,24 +16,21 @@ type ProtoMutationEventHandlerFn[T proto.Message] func(context.Context, models.P
 
 // NewMutationEventSqsProcessor creates an SQS event processor that reads mutation events
 // from an SQS queue, unmarshal them into strongly typed protobuf messages, and processes them
-// using the provided event handler. 
+// using the provided event handler.
 // Note :- if includeSnsWrapper is true, the processor expects SQS messages to be wrapped in SNS JSON format.
 // Otherwise, it expects direct SQS messages containing the SNS "Message" JSON.
 func NewMutationEventSqsProcessor[T proto.Message](svc *sqs.Client, queueURL string, newMessage func() T, handler ProtoMutationEventHandlerFn[T], includeSnsWrapper bool) *SqsEventProcessor {
-	snsStringHandler := MutationEventHandlerToStringHandler(handler, newMessage)
+	stringHandler := MutationEventHandlerToStringHandler(handler, newMessage)
 
 	var sqsHandler SqsHandlerFn
+
 	if includeSnsWrapper {
 		// handling wrapped sns messages in sns format, see example in 'SnsWrapper' struct.
-		snsWrapperHandler := SnsWrapperToSqsWrapperHandler(snsStringHandler)
+		snsWrapperHandler := StringHandlerToSnsWrapperHandler(stringHandler)
 		sqsHandler = jsonEventHandlerToSqsHandlerFn(snsWrapperHandler)
 	} else {
 		// handling direct SQS messages containing the SNS "Message" Json field.
-		sqsHandler = jsonEventHandlerToSqsHandlerFn(
-			func(ctx context.Context, msg string) error {
-				return snsStringHandler(ctx, msg)
-			},
-		)
+		sqsHandler = StringHandlerToSqsHandler(StringHandlerFn(stringHandler))
 	}
 
 	return &SqsEventProcessor{
@@ -49,7 +46,7 @@ func NewMutationEventSqsProcessor[T proto.Message](svc *sqs.Client, queueURL str
 // It deserializes the incoming mutation SNS event message into a PublishedProtoMutationEvent,
 // unmarshal the "Before" and "After" protobuf messages, and invokes the provided handler.
 // Returns an error if JSON or protobuf unmarshaling fails.
-func MutationEventHandlerToStringHandler[T proto.Message](handler ProtoMutationEventHandlerFn[T], newMessage func() T) SnsWrapperHandler {
+func MutationEventHandlerToStringHandler[T proto.Message](handler ProtoMutationEventHandlerFn[T], newMessage func() T) StringHandlerFn {
 	return func(ctx context.Context, s string) error {
 		msg := &models.PublishedProtoMutationEvent{}
 		err := json.Unmarshal([]byte(s), msg)

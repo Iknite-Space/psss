@@ -2,18 +2,31 @@ package sub
 
 import (
 	"context"
+	"errors"
+	awstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
+
+type StringHandlerFn func(ctx context.Context, msg string) error
+
 
 type SnsWrapper struct {
 	Message string `json:"Message"`
 }
 
-type SnsWrapperHandler func(context.Context, string) error
-
-// SnsWrapperToSqsWrapperHandler wraps an SNS message payload into a handler that extracts
+// StringHandlerToSnsWrapperHandler wraps an SNS message payload into a handler that extracts
 // the 'Message' field and passes it to the provided SNS message handler.
-func SnsWrapperToSqsWrapperHandler(handler SnsWrapperHandler) func(context.Context, SnsWrapper) error {
+func StringHandlerToSnsWrapperHandler(handler StringHandlerFn) func(context.Context, SnsWrapper) error {
 	return func(ctx context.Context, sw SnsWrapper) error {
 		return handler(ctx, sw.Message)
+	}
+}
+
+// StringHandlerToSqsHandler wraps  a string handler fxn and returns an sqs handler fxn.
+func StringHandlerToSqsHandler(handler StringHandlerFn) SqsHandlerFn {
+	return func(ctx context.Context, message awstypes.Message) error {
+		if message.Body == nil {
+			return errors.New("body is nil.")
+		}
+		return handler(ctx, *message.Body)
 	}
 }
