@@ -91,7 +91,7 @@ func (s *SqsEventProcessor) Run(ctx context.Context) error {
 
 			err = s.handlerFn(ctx, message)
 			if err != nil {
-				// Note: This is a debug message because "true" errors should be logged by the handling function.
+				// Note:    This is a debug message because "true" errors should be logged by the handling function.
 				s.logger.Debug().Err(err).Str("message_id", messageID).Msg("Error processing message")
 				continue
 			}
@@ -102,7 +102,7 @@ func (s *SqsEventProcessor) Run(ctx context.Context) error {
 			if err != nil {
 				s.logger.Error().Err(err).Str("message_id", messageID).Msg("Error deleting message. Warning this " +
 					"message will likely get reprocessed")
-			}
+			} 
 		}
 	}
 }
