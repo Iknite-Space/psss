@@ -54,16 +54,19 @@ func MutationEventHandlerToStringHandler[T proto.Message](handler ProtoMutationE
 			return fmt.Errorf("error unmarshaling sns mutation event. why=%w", err)
 		}
 
+		//only unmarshal the before and after field if there are  not nil
 		before := newMessage()
-		err = protojson.Unmarshal([]byte(msg.Before), before)
-		if err != nil {
-			return fmt.Errorf("error unmarshaling 'Before' field from sns mutation event. why=%w", err)
+		if msg.Before != nil {
+			if err := protojson.Unmarshal(msg.Before, before); err != nil {
+				return fmt.Errorf("error unmarshaling 'Before' field from sns mutation event. why=%w", err)
+			}
 		}
 
 		after := newMessage()
-		err = protojson.Unmarshal([]byte(msg.After), after)
-		if err != nil {
-			return fmt.Errorf("error unmarshaling 'After' field from sns mutation event. why=%w", err)
+		if msg.After != nil {
+			if err := protojson.Unmarshal(msg.After, after); err != nil {
+				return fmt.Errorf("error unmarshaling 'After' field from sns mutation event. why=%w", err)
+			}
 		}
 
 		input := models.ProtoMutationEvent[T]{
