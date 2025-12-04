@@ -37,8 +37,6 @@ func jsonEventHandlerToSqsHandlerFn[T any](handler JSONEventHandlerFn[T]) SqsHan
 			return fmt.Errorf("message body is nil")
 		}
 
-		fmt.Printf("Received message body: %s\n", *message.Body)
-
 		var msgBody T
 		err := json.Unmarshal([]byte(*message.Body), &msgBody)
 		if err != nil {
