@@ -12,6 +12,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
 // Publisher defines the interface for publishing messages
@@ -97,4 +99,51 @@ func (s *SNSPublisher[T]) Publish(ctx context.Context, message models.ProtoMutat
 		Msg("Message published to SNS successfully")
 
 	return nil
+}
+
+// SQSBatchPublisher sends pre-marshalled message batches directly to an SQS
+// queue. Unlike SNSPublisher (single proto event → SNS topic), this matches
+// the outbox-relay pattern where multiple pre-serialised payloads are sent in
+// one SQS batch call.
+type SQSBatchPublisher struct {
+	sqsClient *sqs.Client
+	logger    zerolog.Logger
+}
+
+func NewSQSBatchPublisher(sqsClient *sqs.Client) *SQSBatchPublisher {
+	return &SQSBatchPublisher{
+		sqsClient: sqsClient,
+		logger:    zerolog.Nop(),
+	}
+}
+
+// WithLogger sets the logger for the SQSBatchPublisher.
+func (p *SQSBatchPublisher) WithLogger(logger zerolog.Logger) *SQSBatchPublisher {
+	p.logger = logger
+	return p
+}
+
+// SendBatch sends a batch of entries to the given queue URL in a single
+// SQS SendMessageBatch call. Returns the number of successfully sent
+// entries, or an error if the batch call itself failed. Individual failed
+// entries (partial failure) are also returned as an error with details.
+//
+// The caller is responsible for marshalling each entry's MessageBody and
+// assigning a unique Id within the batch.
+func (p *SQSBatchPublisher) SendBatch(ctx context.Context, queueURL string, entries []types.SendMessageBatchRequestEntry) (int, error) {
+	if len(entries) == 0 {
+		return 0, nil
+	}
+
+	sent, err := p.sqsClient.SendMessageBatch(ctx, &sqs.SendMessageBatchInput{
+		QueueUrl: aws.String(queueURL),
+		Entries:  entries,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("send sqs batch: %w", err)
+	}
+	if len(sent.Failed) > 0 {
+		return len(sent.Successful), fmt.Errorf("partial sqs batch failure: %v", sent.Failed)
+	}
+	return len(sent.Successful), nil
 }
