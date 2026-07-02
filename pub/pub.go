@@ -12,6 +12,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
+	snstypes "github.com/aws/aws-sdk-go-v2/service/sns/types"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
@@ -146,4 +147,69 @@ func (p *SQSBatchPublisher) SendBatch(ctx context.Context, queueURL string, entr
 		return len(sent.Successful), fmt.Errorf("partial sqs batch failure: %v", sent.Failed)
 	}
 	return len(sent.Successful), nil
+}
+
+type snsBatchAPI interface {
+	PublishBatch(ctx context.Context, params *sns.PublishBatchInput, optFns ...func(*sns.Options)) (*sns.PublishBatchOutput, error)
+}
+
+type SNSBatchPublisher[T proto.Message] struct {
+	snsClient snsBatchAPI
+	topicArn  string
+	logger    zerolog.Logger
+}
+
+func NewSNSBatchPublisher[T proto.Message](snsClient snsBatchAPI, topicArn string) *SNSBatchPublisher[T] {
+	return &SNSBatchPublisher[T]{
+		snsClient: snsClient,
+		topicArn:  topicArn,
+		logger:    zerolog.Nop(),
+	}
+}
+
+func (p *SNSBatchPublisher[T]) WithLogger(logger zerolog.Logger) *SNSBatchPublisher[T] {
+	p.logger = logger
+	return p
+}
+
+func (p *SNSBatchPublisher[T]) PublishBatch(ctx context.Context, messages []models.ProtoMutationEvent[T]) (int, error) {
+	if len(messages) == 0 {
+		return 0, nil
+	}
+
+	entries := make([]snstypes.PublishBatchRequestEntry, len(messages))
+	for i, msg := range messages {
+		eventBytes, err := marshalProtoMutationEventToJSON(msg)
+		if err != nil {
+			return 0, fmt.Errorf("marshalling message %q: %w", msg.EventID, err)
+		}
+
+		p.logger.Debug().
+			RawJSON("sns_message", eventBytes).
+			Str("correlation_id", msg.CorrelationID).
+			Msg("Adding event to SNS batch")
+
+		entries[i] = snstypes.PublishBatchRequestEntry{
+			Id:      aws.String(msg.EventID),
+			Message: aws.String(string(eventBytes)),
+		}
+	}
+
+	resp, err := p.snsClient.PublishBatch(ctx, &sns.PublishBatchInput{
+		TopicArn:                   aws.String(p.topicArn),
+		PublishBatchRequestEntries: entries,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("sns publish batch: %w", err)
+	}
+	if len(resp.Failed) > 0 {
+		return len(resp.Successful), fmt.Errorf("partial sns batch failure: %v", resp.Failed)
+	}
+
+	p.logger.Info().
+		Int("successful", len(resp.Successful)).
+		Int("failed", len(resp.Failed)).
+		Msg("SNS batch published successfully")
+
+	return len(resp.Successful), nil
 }
