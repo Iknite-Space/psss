@@ -17,6 +17,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
+// MaxBatchSize is the maximum number of messages allowed in a single batch
+// publish request for both SQS and SNS.
+const MaxBatchSize = 10
+
 // Publisher defines the interface for publishing messages
 type Publisher[T proto.Message] interface {
 	Publish(ctx context.Context, message models.ProtoMutationEvent[T]) error
@@ -135,6 +139,9 @@ func (p *SQSBatchPublisher) SendBatch(ctx context.Context, queueURL string, entr
 	if len(entries) == 0 {
 		return 0, nil
 	}
+	if len(entries) > MaxBatchSize {
+		return 0, fmt.Errorf("sqs batch size %d exceeds maximum %d", len(entries), MaxBatchSize)
+	}
 
 	sent, err := p.sqsClient.SendMessageBatch(ctx, &sqs.SendMessageBatchInput{
 		QueueUrl: aws.String(queueURL),
@@ -175,6 +182,9 @@ func (p *SNSBatchPublisher[T]) WithLogger(logger zerolog.Logger) *SNSBatchPublis
 func (p *SNSBatchPublisher[T]) PublishBatch(ctx context.Context, messages []models.ProtoMutationEvent[T]) (int, error) {
 	if len(messages) == 0 {
 		return 0, nil
+	}
+	if len(messages) > MaxBatchSize {
+		return 0, fmt.Errorf("sns batch size %d exceeds maximum %d", len(messages), MaxBatchSize)
 	}
 
 	entries := make([]snstypes.PublishBatchRequestEntry, len(messages))

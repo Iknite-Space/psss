@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	snstypes "github.com/aws/aws-sdk-go-v2/service/sns/types"
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -151,5 +152,56 @@ func TestSNSBatchPublisher_WithLogger(t *testing.T) {
 	p2 := p.WithLogger(p.logger)
 	if p != p2 {
 		t.Fatal("WithLogger should return the same instance")
+	}
+}
+
+func TestSNSBatchPublisher_PublishBatch_ExceedsMaxSize(t *testing.T) {
+	client := &mockSNSBatchClient{}
+	p := NewSNSBatchPublisher[proto.Message](client, "arn:aws:sns:us-east-1:123456789012:test-topic")
+
+	messages := make([]models.ProtoMutationEvent[proto.Message], MaxBatchSize+1)
+	for i := range messages {
+		messages[i] = makeTestEvent("evt-1", "corr-1")
+	}
+
+	_, err := p.PublishBatch(context.Background(), messages)
+	if err == nil {
+		t.Fatal("expected error for exceeding batch size, got nil")
+	}
+}
+
+func TestSNSBatchPublisher_PublishBatch_AtMaxSize(t *testing.T) {
+	client := &mockSNSBatchClient{
+		publishBatchFn: func(ctx context.Context, params *sns.PublishBatchInput, optFns ...func(*sns.Options)) (*sns.PublishBatchOutput, error) {
+			successful := make([]snstypes.PublishBatchResultEntry, len(params.PublishBatchRequestEntries))
+			for i := range successful {
+				successful[i] = snstypes.PublishBatchResultEntry{Id: params.PublishBatchRequestEntries[i].Id, MessageId: aws.String("msg")}
+			}
+			return &sns.PublishBatchOutput{Successful: successful}, nil
+		},
+	}
+	p := NewSNSBatchPublisher[proto.Message](client, "arn:aws:sns:us-east-1:123456789012:test-topic")
+
+	messages := make([]models.ProtoMutationEvent[proto.Message], MaxBatchSize)
+	for i := range messages {
+		messages[i] = makeTestEvent("evt-1", "corr-1")
+	}
+
+	count, err := p.PublishBatch(context.Background(), messages)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if count != MaxBatchSize {
+		t.Fatalf("expected %d, got %d", MaxBatchSize, count)
+	}
+}
+
+func TestSQSBatchPublisher_SendBatch_ExceedsMaxSize(t *testing.T) {
+	p := NewSQSBatchPublisher(nil)
+
+	entries := make([]types.SendMessageBatchRequestEntry, MaxBatchSize+1)
+	_, err := p.SendBatch(context.Background(), "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue", entries)
+	if err == nil {
+		t.Fatal("expected error for exceeding batch size, got nil")
 	}
 }
